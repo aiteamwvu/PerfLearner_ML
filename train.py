@@ -4,6 +4,7 @@ import json
 import pymongo
 from sklearn.feature_extraction.text import TfidfVectorizer
 import tensorflow as tf
+import numpy as np
 # parameters are as follows:
 # text (string: text to obtain keywords from)
 def getKeywords(text, numOfKeywords, title=""):
