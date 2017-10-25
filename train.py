@@ -1,7 +1,8 @@
 from newspaper import Article
 from rake_nltk import Rake
 import json
-import pymongo
+import pickle
+#import pymongo
 from sklearn.feature_extraction.text import TfidfVectorizer
 import tensorflow as tf
 import numpy as np
@@ -20,7 +21,8 @@ def getKeywords(text, numOfKeywords, title=""):
         while (i < len(words)):
             # remove everything that's invalid
             # currently it will remove: unicode codes, specified strings in the invalidWords list
-            if ('\u' in words[i].encode('raw_unicode_escape') or words[i] in invalidWords):
+            if (b'\\u' in words[i].encode('raw_unicode_escape') or words[i] in invalidWords):
+#            if words[i] in invalidWords:    
                 del words[i]
             else:  # otherwise increment iteration
                 i += 1
@@ -73,39 +75,53 @@ def getKeywords(text, numOfKeywords, title=""):
 
 
 ##############################################################################
-userKeyWords = [{'google', 'internet', 'apple', 'icloud', 'intel',
-                'microsoft',  'camera', 'battery', 'intelligence', 'windows',
-                'pixel', 'machine', 'android', 'smart', 'logic', 'memory',
-                'technology', 'iphone', 'gadgets', 'ibm', 'programming', 
-                'cyber', 'malware', 'autonomous', 'networks', 'learning'},
-                {'computers', 'computing', 'computer'},
-                {'phones', 'phone'},
-                {'smartphone', 'smartphones'},
-                {'processor','processors', 'processing'},
-                {'ai', 'artificial'},
-                {'robot', 'robotics', 'robots', 'bot', 'bots'},
-                {'wifi', 'wireless'},
-                {'algorithm', 'algorithms'}]
+userKeyWords = [{b'google', b'internet', b'apple', b'icloud', b'intel',
+                b'microsoft',  b'camera', b'battery', b'intelligence', b'windows',
+                b'pixel', b'machine', b'android', b'smart', b'logic', b'memory',
+                b'technology', b'iphone', b'gadgets', b'ibm', b'programming', 
+                b'cyber', b'malware',  b'networks', b'learning',
+                b'antivirus', b'android', b'audio', b'video', b'occulus', b'virtual',
+                b'amazon', b'digital', b'samsung', b'facebook', b'uber'},
+                {b'computers', b'computing', b'computer'},
+                {b'phones', b'phone'},
+                {b'smartphone', b'smartphones'},
+                {b'processor', b'processors', b'processing'},
+                {b'ai', b'artificial'},
+                {b'robot', b'robotics', b'robots', b'bot', b'bots'},
+                {b'wifi', b'wireless'},
+                {b'algorithm', b'algorithms'},
+                {b'software', b'softwares'},
+                {b'autonomous', b'autonomously'}]
 
-conn = pymongo.MongoClient()["test"]["Article"]
+#conn = pymongo.MongoClient()["test"]["Article"]
 all_documents = []
 
 y = []
 i = 0
-file = open("example.json").read()
+c = 0
+d = 0
+file = open("example.json", 'r', encoding = 'utf-8').read()
+#file = open("example.txt").read()
 arr = json.loads(file)
 for article in arr:
-    if "content" in article and article['source_content'] is not 'video':
-        i += 1
+    if "content" in article and article['source_content'] != 'video':
+        
         url = article['_id']
         art = Article(url, language='en')  # English
-        art.download()
-        art.parse()    
-        art_content =  art.text
+        try:
+            art.download()
+            art.parse()    
+            art_content =  art.text
+        except:
+            print('bad article')
+            print(article['source_content'])
+            print(article['_id'])
+            continue
         
+        i += 1 # this keeps tab of my training set
         Keywords = getKeywords(art_content, 20)
         keys = {key for key in Keywords}
-        
+
         count = 0
         count += len(set.intersection(keys, userKeyWords[0]))
         for sets in userKeyWords[1:]:
@@ -113,52 +129,56 @@ for article in arr:
                 count+=1
                 
         all_documents.append(art_content)        
-        
-        record = conn.find_one({"_id":url})
-        record['nn_instance'] = 'train'
+#        print(keys)
+#        print(count)
+#        record = conn.find_one({"_id":url})
+#        record['nn_instance'] = 'train'
         if count >=2:
             y.append([1,0])
-            record["validated"] = 1                   
+#            record["validated"] = 1                   
         else:
             y.append([0,1]) 
-            record["validated"] = -1
-        
-        conn.save(record)        
+#            record["validated"] = -1
+#        conn.save(record)    
+print('The number of valid training articles in the data set is {i:d}'.format(i=i))
 
 y = np.array(y)
+
+with open('trainingdata.pickle', 'wb') as f:
+    pickle.dump([all_documents, y, i], f)
 
 tokenize = lambda doc: doc.lower().split(" ")
 sklearn_tfidf = TfidfVectorizer(norm='l2',min_df=0, use_idf=True, smooth_idf=False, sublinear_tf=True, tokenizer=tokenize)        
 sklearn_representation = sklearn_tfidf.fit_transform(all_documents)   
 
 
-# create training data, validation data and test data
+# create training data, validation data and test data would come later
 Tfid_array = sklearn_representation.toarray()
 sz = Tfid_array.shape
 
-like = np.where(y[:,0]==1)
+like = np.where(y[:,0]==1)[0]
 np.random.shuffle(like)
-train_num1 = int(0.7*len(like))
+train_num1 = int(0.7*len(like)) # 70% of all set = training
 train_ind1 = like[: train_num1]
 val_ind1    = like[train_num1:]
 
-unlike = np.where(y[:,0]==0)
+unlike = np.where(y[:,0]==0)[0]
 np.random.shuffle(unlike)
 train_num2 = int(0.7*len(unlike))
-train_ind2 = like[: train_num1]
-val_ind2    = like[train_num2:]
+train_ind2 = unlike[: train_num2]
+val_ind2    = unlike[train_num2:]
 
 train_ind = np.r_[train_ind1, train_ind2]
 val_ind   = np.r_[val_ind1,   val_ind2]
 
 
 # training data
-xtrain = Tfid_array[train_ind,:]
-ytrain = y[train_ind:]
+xtrain = Tfid_array[train_ind, :]
+ytrain = y[train_ind, :]
 
 # validation data
-xval = Tfid_array[val_ind,:]
-yval = y[val_ind:]
+xval = Tfid_array[val_ind, :]
+yval = y[val_ind, :]
 
 #train
 x = tf.placeholder(tf.float32, [None,  sz[1]])
@@ -214,7 +234,7 @@ cross_entropy = tf.reduce_mean(
 
 # Loss function with L2 Regularization with beta=0.01
 regularizers = tf.nn.l2_loss(W_1) + tf.nn.l2_loss(W_2) + tf.nn.l2_loss(W_3) +  tf.nn.l2_loss(W_fin)
-loss = tf.reduce_mean(loss + beta * regularizers)
+loss = tf.reduce_mean(cross_entropy + beta * regularizers)
 
 #Training step
 train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
@@ -227,7 +247,7 @@ accuracy = 100*tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 #run session
 sess = tf.InteractiveSession()
 tf.global_variables_initializer().run()
-for _ in range(1000):
+for _ in range(2000):
     sess.run(train_step, feed_dict = {x:xtrain, y_: ytrain})
 
 print('The training accuracy is %s %%'% (sess.run(accuracy, feed_dict = {x:xtrain, y_: ytrain})))
