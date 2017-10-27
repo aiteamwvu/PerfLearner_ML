@@ -60,6 +60,8 @@ out_fin = tf.nn.relu(tf.matmul(drop_out_4,W_fin) + b_fin)
 # convert output final (out_fin) to probabilities
 out_probs = tf.nn.softmax(out_fin)
 
-
+#pseudocode for human below
+# if item[0] > item[1]:, 'article matches users interest' otherwise 'article probably doesnt match our users interest'
+    
 #you should obtain the following results
 #array([[ 0.76648879,  0.23351125]], dtype=float32)
