@@ -27,8 +27,6 @@ def index():
    
     print('The number of valid training articles in the data set is {i:d}'.format(i=i))
 
-
-
     for article in record:
         try:
             art = Article(article['_id'], language='en')  # English
@@ -66,7 +64,6 @@ def index():
             # convert output final (out_fin) to probabilities
             out_probs = tf.nn.softmax(out_fin)
             
-    #pseudocode for human below
             if out_probs[0] > out_probs[1]: #'article matches users interest' otherwise 'article probably doesnt match our users interest'
                 article['validated'] = 1
                 conn.save(article)
