@@ -18,7 +18,7 @@ def index():
     conn = pymongo.MongoClient()["test"]["Article"]
     record = conn.find({"validated":{"$exists" : False}})
 
-    with open('trainingdata.pickle', 'rb') as f:
+    with open('trainingdata.pkl', 'r') as f:
         all_documents, y, i = pickle.load(f)
 
     tokenize = lambda doc: doc.lower().split(" ")
@@ -66,13 +66,16 @@ def index():
             
             if out_probs[0] > out_probs[1]: #'article matches users interest' otherwise 'article probably doesnt match our users interest'
                 article['validated'] = 1
-                conn.save(article)
+            else:
+                article['validated'] = 0
+            conn.save(article)
             sess.close()    
+            print({"status":"OK"})
         except:
-            print('bad article, probably a video or the url is broken')
             article['validated'] = 0
-            conn.save(article)               
+            conn.save(article)
+            print({"status":"error with file id " + article["_id"]})
             #obtain the tensorflow graph from saved session
-    return '{"status":"OK"}'
+    return 'OK'
 
 app.run(host='0.0.0.0', threaded=True, port=5005)
