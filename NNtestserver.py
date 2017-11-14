@@ -37,7 +37,7 @@ def index():
             
             sess = tf.Session()
             saver = tf.train.import_meta_graph('mynet.meta')
-            saver.restore(sess,tf.train.latest_checkpoint('./'))
+            saver.restore(sess.tf.train.latest_checkpoint('./'))
             
             xtest = art_tr.toarray()
             xtest = xtest.astype(np.float32)
