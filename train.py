@@ -195,35 +195,47 @@ def bias_variable(shape):
 
 
 
-nn1 = 20 #number of neurons in layer_1
-nn2 = 20 #number of neurons in layer_2
-nn3 = 20 #number of neurons in layer_3
-nn4 = 20 #number of neurons in layer_2
-beta = 0.01 # regularization coefficient
+nn1 = 60 #number of neurons in layer_1
+nn2 = 60 #number of neurons in layer_2
+nn3 = 60 #number of neurons in layer_3
+nn4 = 60 #number of neurons in layer_4
+nn5 = 60 #number of neurons in layer_5
+beta = 0 # regularization coefficient
 
+trainacc = []
+valacc = []
 # Create a tensoflow computational graph for the NN with dropout to prevent overfitting
 # layer 1
-W_1 = weight_variable([sz[1],nn1])
-b_1 = bias_variable([nn1])
-out_1 = tf.nn.relu(tf.matmul(x,W_1) + b_1)
+W_1 = weight_variable([sz[1],nn1], 'W_1')
+b_1 = bias_variable([nn1], 'b_1')
+#out_1 = tf.nn.relu(tf.matmul(x,W_1) + b_1)
+out_1 = tf.nn.sigmoid(tf.matmul(x,W_1) + b_1)
 drop_out_1 = tf.nn.dropout(out_1 , keep_prob = 0.5) 
 
 #layer 2
-W_2 = weight_variable([nn1,nn2])
-b_2 = bias_variable([nn2])
-out_2 = tf.nn.relu(tf.matmul(drop_out_1,W_2) + b_2)
+W_2 = weight_variable([nn1,nn2], 'W_2')
+b_2 = bias_variable([nn2], 'b_2')
+#out_2 = tf.nn.relu(tf.matmul(drop_out_1,W_2) + b_2)
+out_2 = tf.nn.sigmoid(tf.matmul(drop_out_1,W_2) + b_2)
 drop_out_2 = tf.nn.dropout(out_2 , keep_prob = 0.5) 
 
 #layer 3
-W_3 = weight_variable([nn2,nn3])
-b_3 = bias_variable([nn3])
+W_3 = weight_variable([nn2,nn3], 'W_3')
+b_3 = bias_variable([nn3], 'b_3')
 out_3 = tf.nn.relu(tf.matmul(drop_out_2,W_3) + b_3)
 drop_out_3 = tf.nn.dropout(out_3 , keep_prob = 0.5) 
 
+#layer 4
+W_4 = weight_variable([nn3,nn4], 'W_4')
+b_4 = bias_variable([nn4], 'b_4')
+#out_4 = tf.nn.relu(tf.matmul(drop_out_3,W_4) + b_4)
+out_4 = tf.nn.sigmoid(tf.matmul(drop_out_3,W_4) + b_4)
+drop_out_4 = tf.nn.dropout(out_4 , keep_prob = 0.5) 
+
 #Output layer
-W_fin = weight_variable([nn4,2])
-b_fin = bias_variable([2])
-out_fin = tf.nn.relu(tf.matmul(drop_out_3,W_fin) + b_fin)
+W_fin = weight_variable([nn5,2], 'W_fin')
+b_fin = bias_variable([2], 'b_fin')
+out_fin = tf.nn.relu(tf.matmul(drop_out_4,W_fin) + b_fin)
 
 # convert output final (out_fin) to probabilities
 out_probs = tf.nn.softmax(out_fin)
@@ -233,12 +245,12 @@ cross_entropy = tf.reduce_mean(
     tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=out_fin))
 
 # Loss function with L2 Regularization with beta=0.01
-regularizers = tf.nn.l2_loss(W_1) + tf.nn.l2_loss(W_2) + tf.nn.l2_loss(W_3) +  tf.nn.l2_loss(W_fin)
-loss = tf.reduce_mean(cross_entropy + beta * regularizers)
+regularizers = tf.nn.l2_loss(W_1) + tf.nn.l2_loss(W_2) + tf.nn.l2_loss(W_3) +  tf.nn.l2_loss(W_4)+  tf.nn.l2_loss(W_fin)
+loss = tf.reduce_mean(cross_entropy)
 
 #Training step
-train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
-
+train_step = tf.train.AdamOptimizer(1e-3).minimize(cross_entropy)
+#train_step = tf.train.GradientDescentOptimizer(1e-3).minimize(loss)
 # predictions and accuracy
 correct_prediction = tf.equal(tf.argmax(out_fin,1), tf.argmax(y_,1))
 accuracy = 100*tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -247,9 +259,47 @@ accuracy = 100*tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 #run session
 sess = tf.InteractiveSession()
 tf.global_variables_initializer().run()
-for _ in range(2000):
+for iter in range(250):
     sess.run(train_step, feed_dict = {x:xtrain, y_: ytrain})
-
+    if iter%4 == 0:
+        trainAccuSesion  = sess.run(accuracy, feed_dict = {x:xtrain, y_: ytrain})
+        valAccuSession = sess.run(accuracy, feed_dict = {x:xval, y_: yval})
+        print('The training accuracy at step %d is %s %%'% (iter, trainAccuSesion))
+        print('The validationn accuracy at step %d is %s %%'% (iter, valAccuSession))
+        print('\n')
+        trainacc.append(trainAccuSesion)
+        valacc.append(valAccuSession)
+        
 print('The training accuracy is %s %%'% (sess.run(accuracy, feed_dict = {x:xtrain, y_: ytrain})))
 print('The validationn aining accuracy is %s %%'% (sess.run(accuracy, feed_dict = {x:xval, y_: yval})))
-# predictions on test data
+print(sess.run(cross_entropy, feed_dict = {x:xtrain, y_: ytrain}))
+print(sess.run(regularizers, feed_dict = {x:xtrain, y_: ytrain}))
+# predictions on test data')
+
+tf.add_to_collection('vars', W_1)
+tf.add_to_collection('vars', W_2)
+tf.add_to_collection('vars', W_3)
+tf.add_to_collection('vars', W_4)
+tf.add_to_collection('vars', W_fin)
+tf.add_to_collection('vars', b_1)
+tf.add_to_collection('vars', b_2)
+tf.add_to_collection('vars', b_3)
+tf.add_to_collection('vars', b_4)
+tf.add_to_collection('vars', b_fin)
+#tf.add_to_collection('vars', sz)
+
+
+saver = tf.train.Saver()
+saver.save(sess, './mynet1')
+sess.close()
+
+xrange = list(range(1,301,4))
+fig = plt.figure()
+ax1 = fig.add_subplot(111)
+ax1.plot(xrange,trainacc,'b*-' , label = 'Training')
+ax1.plot(xrange,valacc,'r+-', label =  'Testing')
+plt.legend(loc= 'lower right')
+ax1.set_xlabel('iteration')
+ax1.set_ylabel('Accuracy')
+plt.show()
+fig.savefig('NNtest.pdf',bbox_inches = 'tight')
