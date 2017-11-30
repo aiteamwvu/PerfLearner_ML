@@ -68,13 +68,12 @@ for article in record:
             # convert output final (out_fin) to probabilities
             out_probs = tf.nn.softmax(out_fin)
             result = sess.run(out_probs)[0]
-            print('finished nnet')
+
             if result[0] > result[1]: #'article matches users interest' otherwise 'article probably doesnt match our users interest'
                 article['validated'] = 1
             else:
                 article['validated'] = -2
             sess.close()    
-            print('finished validation')
             print({"status":"OK"})
         except:
             article['validated'] = -2
