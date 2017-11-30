@@ -91,7 +91,7 @@ def Threadedmethod():
                 out_probs = tf.nn.softmax(out_fin)
                 result = sess.run(out_probs)[0]
 
-                if rsult[0] > result[1]: #'article matches users interest' otherwise 'article probably doesnt match our users interest'
+                if result[0] > result[1]: #'article matches users interest' otherwise 'article probably doesnt match our users interest'
                     article['validated'] = 1
                 else:
                     article['validated'] = -2
