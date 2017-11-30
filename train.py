@@ -133,7 +133,7 @@ for article in arr:
 #        print(count)
 #        record = conn.find_one({"_id":url})
 #        record['nn_instance'] = 'train'
-        if count >=2:
+        if count >=3:
             y.append([1,0])
 #            record["validated"] = 1                   
         else:
